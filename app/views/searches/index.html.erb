@@ -1,0 +1,91 @@
+<div class="container flex-col gap-10">
+ <h1  class="text-5xl text-center">Real time search</h1>
+  <div id="search-box" class="bg-white p-4 rounded rounded-lg shadow-xl mt-10 w-full">
+    <input type="text" id="search-input" class="border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="Type your search...">
+    <div id="suggestions" class="mt-2"></div>
+  </div>
+  <h2 class="text-start font-bold text-xl mb-3 mt-10">- Your recent searches</h2>
+  <ul id="recent-searches" class="list-disc pl-6 mb-4 space-y-2">
+    <% if @your_most_recent_search_terms.empty? %>
+      <li class="text-secondary italic">You have no searches yet</li>
+    <% else %>
+      <% @your_most_recent_search_terms.each do |search| %>
+        <li><%= "#{search.search_term} (#{search.count} search#{'es' if search.count > 1})" %></li>
+      <% end %>
+    <% end %>
+  </ul>
+  <h2 class="text-start font-bold text-xl mb-3 mt-10">- Your top searches</h2>
+  <ul id="top-searches" class="list-disc pl-6 mb-4 space-y-2">
+    <% if @your_most_frequent_search_terms.empty? %>
+      <li class="text-secondary italic">You have no top searches yet</li>
+    <% else %>
+      <% @your_most_frequent_search_terms.each do |search| %>
+        <li><%= "#{search.search_term} (#{search.count} search#{'es' if search.count > 1})" %></li>
+      <% end %>
+    <% end %>
+  </ul>
+  <h2 class="text-start font-bold text-xl mb-3 mt-10">- Top searches from all</h2>
+  <ul id="global-top-searches" class="list-disc pl-6 mb-4 space-y-2">
+    <% if @most_frequent_search_terms.empty? %>
+      <li class="text-secondary italic">No top searches yet</li>
+    <% else %>
+      <% @most_frequent_search_terms.each do |search| %>
+        <li><%= "#{search.search_term} (#{search.count} search#{'es' if search.count > 1})" %></li>
+      <% end %>
+    <% end %>
+  </ul>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('search-input');
+    const suggestionsContainer = document.getElementById('suggestions');
+    let debounceTimeout;
+
+    searchInput.addEventListener('input', function () {
+      function displaySuggestions(suggestions) {
+        suggestionsContainer.innerHTML = '';
+
+        if (suggestions.length === 0) {
+          const noSuggestionsMessage = document.createElement('div');
+          noSuggestionsMessage.textContent = 'No similar queries found.';
+          suggestionsContainer.appendChild(noSuggestionsMessage);
+        } else {
+          suggestions.slice(0, 5).forEach(suggestion => {
+            const suggestionElement = document.createElement('div');
+            suggestionElement.textContent = `${suggestion.search_term} (${suggestion.count})`;
+            suggestionsContainer.appendChild(suggestionElement);
+          });
+        }
+      }
+
+      function fetchSuggestions(term) {
+        fetch(`/searches/suggestions?search_term=${term}`)
+          .then(response => response.json())
+          .then(data => displaySuggestions(data.suggestions));
+      }
+
+      function logSearch(term) {
+        fetch(`/searches`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content
+          },
+          body: JSON.stringify({ search_term: term })
+        });
+      }
+
+      const term = searchInput.value.trim();
+      clearTimeout(debounceTimeout);
+
+      debounceTimeout = setTimeout(function () {
+        if (term !== '') {
+          fetchSuggestions(term);
+          logSearch(term);
+        } else {
+          suggestionsContainer.innerHTML = '';
+        }
+      }, 500);
+    });
+  });
+</script>

@@ -52,13 +52,7 @@ class SearchTerm < ApplicationRecord
   end
 
   def self.log_search(search_term, user_ip)
-    puts "################"
-    puts "search_term: #{search_term}"
-    puts "user_ip: #{user_ip}"
     recent_search = where(user_ip: user_ip).order(created_at: :desc).first
-    puts "recent_search: #{recent_search}"
-    puts "Time.current: #{Time.current}"
-    puts "################"
     if recent_search && (Time.current - recent_search.created_at) <= 1.minute &&
        search_term_similarity(recent_search.search_term, search_term) <= 5
       recent_search.update(search_term: search_term, count: recent_search.count + 1)
